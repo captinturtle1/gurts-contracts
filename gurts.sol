@@ -11,7 +11,7 @@ interface IYogurtVerse {
 }
 
 contract gurts is ERC721A, Ownable {
-    address public constant YogurtVerse = 0xc34cc9f3cf4e1f8dd3cde01bbe985003dcfc169f;
+    address public constant YogurtVerse = 0xC34CC9f3Cf4E1F8DD3cde01BBE985003dcFc169f;
     uint256 public constant maxSupply = 4444;
     uint256 public price = 0.05 ether;
     string public baseURI = "";
