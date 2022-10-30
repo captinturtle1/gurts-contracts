@@ -17,7 +17,11 @@ contract gurtsStake is Ownable, IERC721Receiver{
         address owner;
     }
 
+    event Deposit(address indexed user, uint256[] indexed ids);
+    event Withdraw(address indexed user, uint256[] indexed ids);
+
     mapping(uint256 => stakedTokenInfo) public tokenInfo;
+    mapping(address => uint256) public balanceOf;
     IGurts public Gurts = IGurts(0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8);
     bool public stakingLaunched;
     bool public depositPaused;
@@ -33,16 +37,12 @@ contract gurtsStake is Ownable, IERC721Receiver{
         require(stakingLaunched, "Staking is not live yet");
 
         for (uint256 i; i < tokenIds.length; i++) {
-            Gurts.safeTransferFrom(
-                _caller,
-                address(this),
-                tokenIds[i],
-                ""
-            );
+            Gurts.safeTransferFrom(_caller, address(this), tokenIds[i], "");
             tokenInfo[tokenIds[i]].stakeStarted = block.timestamp;
             tokenInfo[tokenIds[i]].owner = _caller;
-
+            stakedBalanceOf[_caller] = stakedBalanceOf[_caller] + 1;
         }
+        emit Deposit(_caller, tokenIds);
     }
 
     // withdraw staked nfts
@@ -54,13 +54,11 @@ contract gurtsStake is Ownable, IERC721Receiver{
             tokenInfo[tokenIds[i]].stakeTotal += block.timestamp - tokenInfo[tokenIds[i]].stakeStarted;
             tokenInfo[tokenIds[i]].stakeStarted = 0;
             tokenInfo[tokenIds[i]].owner = address(0);
+            stakedBalanceOf[_caller] = stakedBalanceOf[_caller] - 1;
 
-            Gurts.transferFrom(
-                address(this),
-                _caller,
-                tokenIds[i]
-            );
+            Gurts.transferFrom(address(this), _caller, tokenIds[i]);
         }
+        emit Withdraw(_caller, tokenIds);
     }    
 
     // returns owner of currently staked nft, if nots staed will return the 0 address
@@ -84,17 +82,16 @@ contract gurtsStake is Ownable, IERC721Receiver{
     // just incase nft gets stuck somehow, nft will be sent to owner of nft and deposits will be paused to fix any issues
     function unstuckStakedNfts(uint256[] calldata tokenIds) external onlyOwner {
         depositPaused = true;
-        // 50 is limit due to block gas limits
-        require(tokenIds.length <= 50, "50 per tx");
         for (uint256 i; i < tokenIds.length; i++) {
             stakedTokenInfo memory currentTokenInfo = tokenInfo[tokenIds[i]];
             address receiver = currentTokenInfo.owner;
             if (receiver != address(0) && Gurts.ownerOf(tokenIds[i]) == address(this)) {
-                Gurts.transferFrom(
-                    address(this),
-                    receiver,
-                    tokenIds[i]
-                );
+                tokenInfo[tokenIds[i]].stakeTotal += block.timestamp - tokenInfo[tokenIds[i]].stakeStarted;
+                tokenInfo[tokenIds[i]].stakeStarted = 0;
+                tokenInfo[tokenIds[i]].owner = address(0);
+                stakedBalanceOf[receiver] = stakedBalanceOf[receiver] - 1;
+
+                Gurts.transferFrom(address(this), receiver, tokenIds[i]);
             }
         }
     }
@@ -114,12 +111,7 @@ contract gurtsStake is Ownable, IERC721Receiver{
     // misc functions
 
     // needed to recieve erc721 nfts
-    function onERC721Received(
-        address,
-        address,
-        uint256,
-        bytes calldata
-    ) external pure returns (bytes4) {
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
     }
 }
