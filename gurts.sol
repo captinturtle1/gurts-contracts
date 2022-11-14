@@ -65,11 +65,10 @@ contract gurts is ERC721A, Ownable {
         for (uint256 i; i < tokenIds.length; i++) {
             uint256 currentId = tokenIds[i];
             require(!passHasClaimed[currentId], "Already claimed");
-            require(!_exists(currentId));
             require(yvContract.ownerOf(currentId) == _caller);
             
             passHasClaimed[currentId] = true;
-            _mint(_caller, 3);
+            _mint(_caller, 1);
         }
     }
 
