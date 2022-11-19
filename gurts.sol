@@ -5,12 +5,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "erc721a/contracts/ERC721A.sol";
+import "erc721a/contracts/extensions/ERC721AQueryable.sol";
 
 interface IYogurtVerse {
   function ownerOf(uint256 tokenId) external returns (address);
 }
 
-contract gurts is ERC721A, Ownable {
+contract gurts is ERC721A, ERC721AQueryable, Ownable {
     address public constant YogurtVerse = 0xC34CC9f3Cf4E1F8DD3cde01BBE985003dcFc169f;
     uint256 public constant maxSupply = 4444;
     uint256 public price = 0.05 ether;
@@ -27,7 +28,7 @@ contract gurts is ERC721A, Ownable {
     constructor() ERC721A("Gurts", "GURT") {}
 
     function whitelistMint(bytes32[] calldata _merkleProof) external {
-        address _caller = _msgSender();
+        address _caller = msg.sender;
         require(privateSale, "Private sale not live");
         require(maxSupply >= totalSupply() + 1, "Exceeds max supply");
         require(tx.origin == _caller, "No contracts");
@@ -44,18 +45,18 @@ contract gurts is ERC721A, Ownable {
     }
 
     function publicMint() external {
-        address _caller = _msgSender();
+        address _caller = msg.sender;
         require(publicSale, "Public sale not live");
         require(maxSupply >= totalSupply() + 1, "Exceeds max supply");
         require(tx.origin == _caller, "No contracts");
-        require(!hasMinted[msg.sender], "Already minted");
+        require(!hasMinted[_caller], "Already minted");
 
-        hasMinted[msg.sender] = true;
+        hasMinted[_caller] = true;
         _mint(_caller, 1);
     }
 
     function passMint(uint256[] memory tokenIds) external {
-        address _caller = _msgSender();
+        address _caller = msg.sender;
         require(claimSale, "Claim not live");
         require(maxSupply >= totalSupply() + 1, "Exceeds max supply");
         require(tx.origin == _caller, "No contracts");
@@ -79,7 +80,7 @@ contract gurts is ERC721A, Ownable {
 
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
-        (bool success, ) = _msgSender().call{value: balance}("");
+        (bool success, ) = msg.sender.call{value: balance}("");
         require(success, "Failed to send");
     }
 
