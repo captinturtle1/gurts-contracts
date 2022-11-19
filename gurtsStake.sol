@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IGurts {
   function ownerOf(uint256 tokenId) external returns (address);
@@ -10,7 +11,7 @@ interface IGurts {
   function transferFrom(address from, address to, uint256 tokenId) external;
 }
 
-contract gurtsStake is Ownable, IERC721Receiver{
+contract gurtsStake is Ownable, IERC721Receiver, ReentrancyGuard{
     struct stakedTokenInfo {
         uint256 stakeStarted;
         uint256 stakeTotal;
@@ -31,10 +32,13 @@ contract gurtsStake is Ownable, IERC721Receiver{
     // public functions
 
     // stake nft
-    function deposit(uint256[] calldata tokenIds) external {
-        address _caller = _msgSender();
+    function deposit(uint256[] calldata tokenIds) external nonReentrant {
+        address _caller = msg.sender;
         require(!depositPaused, "Deposit is paused");
         require(stakingLaunched, "Staking is not live yet");
+
+        require(tokenIds.length > 0, "Must deposit atleast 1");
+        require(_caller == tx.origin, "No Contracts");
 
         for (uint256 i; i < tokenIds.length; i++) {
             require(Gurts.ownerOf(tokenIds[i]) == _caller, "Not owner of token");
@@ -44,12 +48,16 @@ contract gurtsStake is Ownable, IERC721Receiver{
             tokenInfo[tokenIds[i]].owner = _caller;
             userTokens[_caller].push(tokenIds[i]);
         }
+
         emit Deposit(_caller, tokenIds);
     }
 
     // withdraw staked nfts
-    function withdraw(uint256[] calldata tokenIds) public {
-        address _caller = _msgSender();
+    function withdraw(uint256[] calldata tokenIds) external nonReentrant {
+        address _caller = msg.sender;
+        require(tokenIds.length > 0, "Must withdraw atleast 1");
+        require(_caller == tx.origin, "No Contracts");
+
         for (uint256 i; i < tokenIds.length; i++) {
             address tokenOwner = tokenInfo[tokenIds[i]].owner;
             require(Gurts.ownerOf(tokenIds[i]) == address(this), "Token not staked");
@@ -63,6 +71,7 @@ contract gurtsStake is Ownable, IERC721Receiver{
 
             Gurts.transferFrom(address(this), tokenOwner, tokenIds[i]);
         }
+
         emit Withdraw(_caller, tokenIds);
     }    
 
@@ -96,6 +105,21 @@ contract gurtsStake is Ownable, IERC721Receiver{
         return allStakeTime;
     }
 
+    // returns users stake points (1st token staked adds 100% of time staked, every token after is 50% of time staked)
+    function stakePoints(address _address) public view returns (uint256) {
+        uint256 currentPoints;
+        for (uint256 i; i < userTokens[_address].length; i++) {
+            if (tokenInfo[userTokens[_address][i]].stakeStarted != 0) {
+                if (i == 0) {
+                    currentPoints += block.timestamp - tokenInfo[userTokens[_address][i]].stakeStarted;
+                } else {
+                    currentPoints += (block.timestamp - tokenInfo[userTokens[_address][i]].stakeStarted) / 2;
+                }
+            }
+        }
+        return currentPoints;
+    }
+
     // returns current stake time accross all tokens for an address
     function totalStakeTimeAll(address _address) public view returns (uint256) {
         uint256 allStakeTime;
@@ -126,7 +150,7 @@ contract gurtsStake is Ownable, IERC721Receiver{
     // misc functions
 
     // needed to recieve erc721 nfts
-    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+    function onERC721Received(address, address, uint256, bytes calldata) override external pure returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
     }
 
