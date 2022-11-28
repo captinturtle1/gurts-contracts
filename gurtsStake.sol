@@ -23,8 +23,7 @@ contract gurtsStake is Ownable, IERC721Receiver, ReentrancyGuard{
 
     mapping(uint256 => stakedTokenInfo) public tokenInfo;
     mapping(address => uint256[]) userTokens;
-    IGurts public Gurts = IGurts(0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8);
-    bool public stakingLaunched;
+    IGurts public constant Gurts = IGurts(0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8);
     bool public depositPaused;
 
 
@@ -35,7 +34,6 @@ contract gurtsStake is Ownable, IERC721Receiver, ReentrancyGuard{
     function deposit(uint256[] calldata tokenIds) external nonReentrant {
         address _caller = msg.sender;
         require(!depositPaused, "Deposit is paused");
-        require(stakingLaunched, "Staking is not live yet");
 
         require(tokenIds.length > 0, "Must deposit atleast 1");
         require(_caller == tx.origin, "No Contracts");
@@ -138,12 +136,6 @@ contract gurtsStake is Ownable, IERC721Receiver, ReentrancyGuard{
     // toggles deposits, withdrawals are always open
     function toggleDeposits() public onlyOwner {
         depositPaused = !depositPaused;
-    }
-
-    // starts staking, one time function
-    function startStaking() public onlyOwner {
-        require(!stakingLaunched, "Staking has been launched already");
-        stakingLaunched = true;
     }
 
 
