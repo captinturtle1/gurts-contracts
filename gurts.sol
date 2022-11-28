@@ -20,7 +20,8 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
     bool public publicSale = false;
     bool public claimSale = false;
 
-    mapping(address => bool) public hasMinted;
+    mapping(address => bool) public hasMintedPublic;
+    mapping(address => bool) public hasMintedWhitelist;
     mapping(uint256 => bool) public passHasClaimed;
 
     bytes32 merkleRoot;
@@ -31,16 +32,17 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
         address _caller = msg.sender;
         require(privateSale, "Private sale not live");
         require(maxSupply >= totalSupply() + 1, "Exceeds max supply");
+        require(msg.value == price, "Wrong ether amount sent");
         require(tx.origin == _caller, "No contracts");
-        require(!hasMinted[msg.sender], "Already minted");
+        require(!hasMintedWhitelist[_caller], "Already minted");
 
-        bytes32 node = keccak256(abi.encodePacked(msg.sender));
+        bytes32 node = keccak256(abi.encodePacked(_caller));
         require(
             MerkleProof.verify(_merkleProof, merkleRoot, node),
             "Invalid proof"
         );
 
-        hasMinted[msg.sender] = true;
+        hasMintedWhitelist[_caller] = true;
         _mint(_caller, 1);
     }
 
@@ -48,33 +50,35 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
         address _caller = msg.sender;
         require(publicSale, "Public sale not live");
         require(maxSupply >= totalSupply() + 1, "Exceeds max supply");
+        require(msg.value == price, "Wrong ether amount sent");
         require(tx.origin == _caller, "No contracts");
-        require(!hasMinted[_caller], "Already minted");
+        require(!hasMintedPublic[_caller], "Already minted");
 
-        hasMinted[_caller] = true;
+        hasMintedPublic[_caller] = true;
         _mint(_caller, 1);
     }
 
     function passMint(uint256[] memory tokenIds) external {
         address _caller = msg.sender;
         require(claimSale, "Claim not live");
-        require(maxSupply >= totalSupply() + 1, "Exceeds max supply");
+        require(maxSupply >= totalSupply() + tokenIds.length, "Exceeds max supply");
         require(tx.origin == _caller, "No contracts");
+        require(tokenIds.length > 0, "must have atleast 1 token");
 
         IYogurtVerse yvContract = IYogurtVerse(YogurtVerse);
 
         for (uint256 i; i < tokenIds.length; i++) {
             uint256 currentId = tokenIds[i];
             require(!passHasClaimed[currentId], "Already claimed");
-            require(yvContract.ownerOf(currentId) == _caller);
+            require(yvContract.ownerOf(currentId) == _caller, "Not owner of token");
             
             passHasClaimed[currentId] = true;
-            _mint(_caller, 1);
         }
+        _mint(_caller, tokenIds.length);
     }
 
     function ownerMint(uint256 _amount, address _to) external onlyOwner {
-        require(totalSupply() + _amount <= maxSupply, "Exceeds max supply");
+        require(maxSupply >= totalSupply() + _amount, "Exceeds max supply");
         _mint(_to, _amount);
     }
 
