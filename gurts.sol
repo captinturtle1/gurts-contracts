@@ -12,9 +12,15 @@ interface IYogurtVerse {
 }
 
 contract gurts is ERC721A, ERC721AQueryable, Ownable {
-    address public constant YogurtVerse = 0xC34CC9f3Cf4E1F8DD3cde01BBE985003dcFc169f;
+    IYogurtVerse public constant yvContract = IYogurtVerse(0xC34CC9f3Cf4E1F8DD3cde01BBE985003dcFc169f);
+
     uint256 public constant maxSupply = 4444;
-    uint256 public price = 0.05 ether;
+    uint256 public constant maxWhitelist = 3012;
+
+    uint256 public constant claimSupply = 321;
+    uint256 public constant maxPerPassWL = 2;
+
+    uint256 public price = 0.015 ether;
     string public baseURI = "";
     bool public privateSale = false;
     bool public publicSale = false;
@@ -22,16 +28,20 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
 
     mapping(address => bool) public hasMintedPublic;
     mapping(address => bool) public hasMintedWhitelist;
+
     mapping(uint256 => bool) public passHasClaimed;
+    mapping(uint256 => uint256) public passWLMinted;
+
+    
 
     bytes32 merkleRoot;
 
     constructor() ERC721A("Gurts", "GURT") {}
 
-    function whitelistMint(bytes32[] calldata _merkleProof) external {
+    function whitelistMint(bytes32[] calldata _merkleProof) payable external {
         address _caller = msg.sender;
         require(privateSale, "Private sale not live");
-        require(maxSupply >= totalSupply() + 1, "Exceeds max supply");
+        require(maxWhitelist >= totalSupply() + 1, "Exceeds max WL supply");
         require(msg.value == price, "Wrong ether amount sent");
         require(tx.origin == _caller, "No contracts");
         require(!hasMintedWhitelist[_caller], "Already minted");
@@ -46,10 +56,24 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
         _mint(_caller, 1);
     }
 
-    function publicMint() external {
+    function passWhitelistMint(uint256 tokenId, uint256 _amount) payable external {
+        address _caller = msg.sender;
+        require(privateSale, "Private sale not live");
+        require(maxWhitelist >= totalSupply() + _amount, "Exceeds max WL supply");
+        require(msg.value == price * _amount, "Wrong ether amount sent");
+        require(tx.origin == _caller, "No contracts");
+
+        require(maxPerPassWL >= passWLMinted[tokenId] + _amount, "Too many WL mints for this pass");
+        require(yvContract.ownerOf(tokenId) == _caller, "Not owner of token");
+        
+        passWLMinted[tokenId] += _amount;
+        _mint(_caller, _amount);
+    }
+
+    function publicMint() payable external {
         address _caller = msg.sender;
         require(publicSale, "Public sale not live");
-        require(maxSupply >= totalSupply() + 1, "Exceeds max supply");
+        require(maxSupply - claimSupply >= totalSupply() + 1, "Exceeds max supply");
         require(msg.value == price, "Wrong ether amount sent");
         require(tx.origin == _caller, "No contracts");
         require(!hasMintedPublic[_caller], "Already minted");
@@ -64,8 +88,6 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
         require(maxSupply >= totalSupply() + tokenIds.length, "Exceeds max supply");
         require(tx.origin == _caller, "No contracts");
         require(tokenIds.length > 0, "must have atleast 1 token");
-
-        IYogurtVerse yvContract = IYogurtVerse(YogurtVerse);
 
         for (uint256 i; i < tokenIds.length; i++) {
             uint256 currentId = tokenIds[i];
