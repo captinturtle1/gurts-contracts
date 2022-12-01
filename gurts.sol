@@ -56,18 +56,25 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
         _mint(_caller, 1);
     }
 
-    function passWhitelistMint(uint256 tokenId, uint256 _amount) payable external {
+    function passWhitelistMint(uint256[] memory tokenIds, uint256 _amountPer) payable external {
         address _caller = msg.sender;
+        require(tokenIds.length > 0, "Must enter atleast 1 tokenId");
+        require(_amountPer > 0, "Must mint atleast 1 per");
+
         require(privateSale, "Private sale not live");
-        require(maxWhitelist >= totalSupply() + _amount, "Exceeds max WL supply");
-        require(msg.value == price * _amount, "Wrong ether amount sent");
+        require(maxWhitelist >= totalSupply() + (tokenIds.length * _amountPer), "Exceeds max WL supply");
+        require(msg.value == price * (tokenIds.length * _amountPer), "Wrong ether amount sent");
         require(tx.origin == _caller, "No contracts");
 
-        require(maxPerPassWL >= passWLMinted[tokenId] + _amount, "Too many WL mints for this pass");
-        require(yvContract.ownerOf(tokenId) == _caller, "Not owner of token");
-        
-        passWLMinted[tokenId] += _amount;
-        _mint(_caller, _amount);
+        for (uint256 i; i < tokenIds.length; i++) {
+            uint256 currentId = tokenIds[i];
+            require(maxPerPassWL >= passWLMinted[currentId] + _amountPer, "Too many WL mints for this pass");
+            require(yvContract.ownerOf(currentId) == _caller, "Not owner of token");
+            
+            passWLMinted[currentId] += _amountPer;
+        }
+
+        _mint(_caller, (tokenIds.length * _amountPer));
     }
 
     function publicMint() payable external {
