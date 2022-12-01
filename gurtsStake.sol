@@ -103,21 +103,6 @@ contract gurtsStake is Ownable, IERC721Receiver, ReentrancyGuard{
         return allStakeTime;
     }
 
-    // returns users stake points (1st token staked adds 100% of time staked, every token after is 50% of time staked)
-    function stakePoints(address _address) public view returns (uint256) {
-        uint256 currentPoints;
-        for (uint256 i; i < userTokens[_address].length; i++) {
-            if (tokenInfo[userTokens[_address][i]].stakeStarted != 0) {
-                if (i == 0) {
-                    currentPoints += block.timestamp - tokenInfo[userTokens[_address][i]].stakeStarted;
-                } else {
-                    currentPoints += (block.timestamp - tokenInfo[userTokens[_address][i]].stakeStarted) / 2;
-                }
-            }
-        }
-        return currentPoints;
-    }
-
     // returns current stake time accross all tokens for an address
     function totalStakeTimeAll(address _address) public view returns (uint256) {
         uint256 allStakeTime;
