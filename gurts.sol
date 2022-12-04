@@ -12,7 +12,7 @@ interface IYogurtVerse {
 }
 
 contract gurts is ERC721A, ERC721AQueryable, Ownable {
-    IYogurtVerse public constant yvContract = IYogurtVerse(0xC34CC9f3Cf4E1F8DD3cde01BBE985003dcFc169f);
+    IYogurtVerse public constant yvContract = IYogurtVerse(0x0000000000000000000000000000000000000000);
 
     uint256 public constant maxSupply = 4444;
     uint256 public constant maxWhitelist = 3012;
