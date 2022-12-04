@@ -17,7 +17,8 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
     uint256 public constant maxSupply = 4444;
     uint256 public constant maxWhitelist = 3012;
 
-    uint256 public constant claimSupply = 321;
+    uint256 public constant maxClaimSupply = 321;
+    uint256 public claimSupply = 0;
 
     uint256 public price = 0.015 ether;
     string public baseURI = "";
@@ -57,7 +58,7 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
     function publicMint() payable external {
         address _caller = msg.sender;
         require(publicSale, "Public sale not live");
-        require(maxSupply - claimSupply >= totalSupply() + 1, "Exceeds max supply");
+        require(maxSupply - maxClaimSupply >= (totalSupply() - claimSupply) + 1, "Exceeds max supply");
         require(msg.value == price, "Wrong ether amount sent");
         require(tx.origin == _caller, "No contracts");
         require(!hasMintedPublic[_caller], "Already minted");
@@ -80,6 +81,7 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
             
             passHasClaimed[currentId] = true;
         }
+        claimSupply += tokenIds.length;
         _mint(_caller, tokenIds.length);
     }
 
