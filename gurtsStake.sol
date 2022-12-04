@@ -3,15 +3,13 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IGurts {
   function ownerOf(uint256 tokenId) external returns (address);
-  function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata _data) external;
   function transferFrom(address from, address to, uint256 tokenId) external;
 }
 
-contract gurtsStake is Ownable, IERC721Receiver, ReentrancyGuard{
+contract gurtsStake is Ownable, IERC721Receiver {
     struct stakedTokenInfo {
         uint256 stakeStarted;
         uint256 stakeTotal;
@@ -23,7 +21,7 @@ contract gurtsStake is Ownable, IERC721Receiver, ReentrancyGuard{
 
     mapping(uint256 => stakedTokenInfo) public tokenInfo;
     mapping(address => uint256[]) userTokens;
-    IGurts public constant Gurts = IGurts(0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8);
+    IGurts public constant Gurts = IGurts(0x0000000000000000000000000000000000000000);
     bool public depositPaused;
 
 
@@ -31,7 +29,7 @@ contract gurtsStake is Ownable, IERC721Receiver, ReentrancyGuard{
     // public functions
 
     // stake nft
-    function deposit(uint256[] calldata tokenIds) external nonReentrant {
+    function deposit(uint256[] calldata tokenIds) external {
         address _caller = msg.sender;
         require(!depositPaused, "Deposit is paused");
 
@@ -41,7 +39,7 @@ contract gurtsStake is Ownable, IERC721Receiver, ReentrancyGuard{
         for (uint256 i; i < tokenIds.length; i++) {
             require(Gurts.ownerOf(tokenIds[i]) == _caller, "Not owner of token");
 
-            Gurts.safeTransferFrom(_caller, address(this), tokenIds[i], "");
+            Gurts.transferFrom(_caller, address(this), tokenIds[i]);
             tokenInfo[tokenIds[i]].stakeStarted = block.timestamp;
             tokenInfo[tokenIds[i]].owner = _caller;
             userTokens[_caller].push(tokenIds[i]);
@@ -51,7 +49,7 @@ contract gurtsStake is Ownable, IERC721Receiver, ReentrancyGuard{
     }
 
     // withdraw staked nfts
-    function withdraw(uint256[] calldata tokenIds) external nonReentrant {
+    function withdraw(uint256[] calldata tokenIds) external {
         address _caller = msg.sender;
         require(tokenIds.length > 0, "Must withdraw atleast 1");
         require(_caller == tx.origin, "No Contracts");
