@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "https://github.com/ProjectOpenSea/operator-filter-registry/blob/529cceeda9f5f8e28812c20042cc57626f784718/src/DefaultOperatorFilterer.sol";
 import "erc721a/contracts/ERC721A.sol";
 import "erc721a/contracts/extensions/ERC721AQueryable.sol";
 
@@ -11,8 +12,8 @@ interface IYogurtVerse {
   function ownerOf(uint256 tokenId) external returns (address);
 }
 
-contract gurts is ERC721A, ERC721AQueryable, Ownable {
-    IYogurtVerse public constant yvContract = IYogurtVerse(0x0000000000000000000000000000000000000000);
+contract gurts is ERC721A, ERC721AQueryable, Ownable, DefaultOperatorFilterer {
+    IYogurtVerse public constant yvContract = IYogurtVerse(0xC34CC9f3Cf4E1F8DD3cde01BBE985003dcFc169f);
 
     uint256 public constant maxSupply = 4444;
     uint256 public constant maxWhitelist = 3012;
@@ -21,7 +22,7 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
     uint256 public claimSupply = 0;
 
     uint256 public price = 0.015 ether;
-    string public baseURI = "";
+    string public baseURI = "ipfs://QmRnKB3C9i6ESAPGJSDUmPSN5WM9NnAJbKBwcozMgyqdHh/";
     bool public privateSale = false;
     bool public publicSale = false;
     bool public claimSale = false;
@@ -120,7 +121,7 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
         price = _newPrice;
     }
 
-    function tokenURI(uint256 _tokenId) public view override returns (string memory) {
+    function tokenURI(uint256 _tokenId) public view override(ERC721A, IERC721A) returns (string memory) {
         require(_exists(_tokenId), "Token does not exist.");
         return bytes(baseURI).length > 0 ? string(
             abi.encodePacked(
@@ -128,5 +129,25 @@ contract gurts is ERC721A, ERC721AQueryable, Ownable {
               Strings.toString(_tokenId)
             )
         ) : "";
+    }
+
+    function setApprovalForAll(address operator, bool approved) public override(ERC721A, IERC721A) onlyAllowedOperatorApproval(operator) {
+        super.setApprovalForAll(operator, approved);
+    }
+
+    function approve(address operator, uint256 tokenId) public payable override(ERC721A, IERC721A) onlyAllowedOperatorApproval(operator) {
+        super.approve(operator, tokenId);
+    }
+
+    function transferFrom(address from, address to, uint256 tokenId) public payable override(ERC721A, IERC721A) onlyAllowedOperator(from) {
+        super.transferFrom(from, to, tokenId);
+    }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId) public payable override(ERC721A, IERC721A) onlyAllowedOperator(from) {
+        super.safeTransferFrom(from, to, tokenId);
+    }
+
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public payable override(ERC721A, IERC721A) onlyAllowedOperator(from) {
+        super.safeTransferFrom(from, to, tokenId, data);
     }
 }
